@@ -1,13 +1,29 @@
 import React from 'react';
 import { Box } from 'lucide-react'
 import Button from "./ui/Button";
+import {useOutletContext} from "react-router";
 
 function Navbar() {
 
-    const isSignedIn = false;
-    const username = 'Michal';
+    const { isSignedIn, userName, signIn, signOut } = useOutletContext<AuthContext>()
 
-    const handleAuthClick = async () => {};
+    const handleAuthClick = async () => {
+        if(isSignedIn) {
+            try {
+                await signOut();
+            } catch (e) {
+                console.error(`Puter signed out failed: ${e}`);
+            }
+            return;
+        }
+
+        try {
+            await signIn();
+        } catch (e) {
+            console.error(`Puter signed in failed: ${e}`);
+        }
+    };
+
     return (
         <header className="navbar">
             <nav className="inner">
@@ -26,7 +42,7 @@ function Navbar() {
                 <div className="actions">
                     {isSignedIn ?
                         <>
-                            <span className="greeting">{username ? `Hi, ${username}` : 'Signed In'}
+                            <span className="greeting">{userName ? `Hi, ${userName}` : 'Signed In'}
                             </span>
                             <Button size="sm" onClick={handleAuthClick} className="btn">
                                 Log Out
