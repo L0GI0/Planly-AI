@@ -1,7 +1,8 @@
-import React, {useState} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {useOutletContext} from "react-router";
 import {CheckCircle2, ImageIcon, UploadIcon} from "lucide-react";
-import {PROGRESS_INCREMENT, PROGRESS_INTERVAL_MS, REDIRECT_DELAY_MS} from "../lib/constants";
+import {PROGRESS_INCREMENT, PROGRESS_INTERVAL_MS, REDIRECT_DELAY_MS, MAX_UPLOAD_SIZE, ALLOWED_FILE_TYPES, ALLOWED_FILE_EXTENSIONS} from "../lib/constants";
+import {formatBytes} from "../lib/utils";
 
 interface UploadProps {
     onComplete?: (base64: string) => void;
@@ -12,11 +13,41 @@ function Upload(props: UploadProps) {
     const [file, setFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+    const progressIntervalRef = useRef<any>(null);
+    const redirectTimeoutRef = useRef<any>(null);
 
     const { isSignedIn } = useOutletContext<AuthContext>()
 
+    useEffect(() => {
+        return () => {
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+            if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+        };
+    }, []);
+
+    const validateFile = (file: File): string | null => {
+        if (file.size > MAX_UPLOAD_SIZE) {
+            return `File is too large. Maximum size is ${formatBytes(MAX_UPLOAD_SIZE)}.`;
+        }
+
+        const lastDotIndex = file.name.lastIndexOf('.');
+        const extension = lastDotIndex !== -1 ? file.name.slice(lastDotIndex).toLowerCase() : '';
+
+        if (!ALLOWED_FILE_TYPES.includes(file.type) && !ALLOWED_FILE_EXTENSIONS.includes(extension)) {
+            return "Invalid file type. Only JPG and PNG are allowed.";
+        }
+
+        return null;
+    };
+
     const processFile = (file: File) => {
         if (!isSignedIn) return;
+
+        // Clear existing timers if any
+        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+        if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+
         setFile(file);
         setProgress(0);
 
@@ -24,13 +55,16 @@ function Upload(props: UploadProps) {
         reader.onload = (e) => {
             const base64 = e.target?.result as string;
 
-            const interval = setInterval(() => {
+            progressIntervalRef.current = setInterval(() => {
                 setProgress((prev) => {
                     const next = prev + PROGRESS_INCREMENT;
                     if (next >= 100) {
-                        clearInterval(interval);
-                        setTimeout(() => {
+                        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                        progressIntervalRef.current = null;
+
+                        redirectTimeoutRef.current = setTimeout(() => {
                             props.onComplete?.(base64);
+                            redirectTimeoutRef.current = null;
                         }, REDIRECT_DELAY_MS);
                         return 100;
                     }
@@ -54,19 +88,31 @@ function Upload(props: UploadProps) {
     const onDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
+        setError(null);
 
         if (!isSignedIn) return;
 
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile) {
+            const validationError = validateFile(droppedFile);
+            if (validationError) {
+                setError(validationError);
+                return;
+            }
             processFile(droppedFile);
         }
     };
 
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!isSignedIn) return;
+        setError(null);
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
+            const validationError = validateFile(selectedFile);
+            if (validationError) {
+                setError(validationError);
+                return;
+            }
             processFile(selectedFile);
         }
     };
@@ -97,7 +143,9 @@ function Upload(props: UploadProps) {
                             ): "Sign in or sign up with Puter to upload"}
                         </p>
                         <p className="help">
-                            Maximum file size 50MB.
+                            {error ? (
+                                <span className="text-red-500 font-medium">{error}</span>
+                            ) : `Maximum file size ${formatBytes(MAX_UPLOAD_SIZE)}.`}
                         </p>
                     </div>
                 </div>
