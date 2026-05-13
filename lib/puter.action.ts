@@ -41,7 +41,7 @@ export const createProject = async ({ item }: CreateProjectParams):
     )
 
     if(!resolvedSource) {
-        console.warn(`Could not resolve source image: ${item.sourceImage}`);
+        console.warn(`Could not resolve source image for projectId=${projectId}`);
         return null;
     }
 
