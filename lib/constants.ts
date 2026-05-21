@@ -2,9 +2,9 @@ export const PUTER_WORKER_URL = import.meta.env.VITE_PUTER_WORKER_URL || "";
 
 // Storage Paths
 export const STORAGE_PATHS = {
-    ROOT: "roomify",
-    SOURCES: "roomify/sources",
-    RENDERS: "roomify/renders",
+    ROOT: "planly",
+    SOURCES: "planly/sources",
+    RENDERS: "planly/renders",
 } as const;
 
 // Timing Constants (in milliseconds)
@@ -29,7 +29,7 @@ export const MAX_UPLOAD_SIZE = 50 * 1024 * 1024; // 50MB
 export const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 export const ALLOWED_FILE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
 
-export const ROOMIFY_RENDER_PROMPT = `
+export const PLANLY_AI_RENDER_PROMPT = `
 TASK: Convert the input 2D floor plan into a **photorealistic, top‑down 3D architectural render**.
 
 STRICT REQUIREMENTS (do not violate):
